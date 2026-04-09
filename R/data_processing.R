@@ -4,11 +4,12 @@
 library(dplyr)
 library(readr)
 
-# ---- Strike Zone Constants (feet) ----
-ZONE_LEFT    <- -0.83
-ZONE_RIGHT   <-  0.83
-ZONE_TOP_DEFAULT <- 3.5
-ZONE_BOT_DEFAULT <- 1.5
+# ---- Strike Zone Constants (inches) ----
+ZONE_LEFT    <- -8.5
+ZONE_RIGHT   <-  8.5
+ZONE_TOP_DEFAULT <- 42
+ZONE_BOT_DEFAULT <- 18
+BALL_RADIUS  <- 1.5    # zone expansion for baseball width
 
 # ---- Source Detection ----
 # Identifies the tracking system by looking for signature column names
@@ -16,7 +17,9 @@ detect_source <- function(col_names) {
   cols_lower <- tolower(col_names)
 
   trackman_sigs   <- c("taggedpitchtype", "autopitchtype", "spinaxis", "relspeed")
-  flightscope_sigs <- c("horzbreak", "inducedvertbreak", "totalbreakz")
+  flightscope_sigs <- c("horzbreak", "inducedvertbreak", "totalbreakz",
+                          "break_horizontal", "break_induced_vertical",
+                          "pitch_strike_zone_front")
 
   tm_hits <- sum(trackman_sigs %in% cols_lower)
   fs_hits <- sum(flightscope_sigs %in% cols_lower)
@@ -82,9 +85,11 @@ standardize_pitch_calls <- function(df, source) {
       mutate(
         call_type = case_when(
           tolower(pitch_call) %in% c("ball", "ballcalled", "ball called",
-                                      "ball in dirt", "ballindirt") ~ "Ball",
+                                      "ball in dirt", "ballindirt",
+                                      "b", "hbp") ~ "Ball",
           tolower(pitch_call) %in% c("called strike", "strikecalled",
-                                      "strike called") ~ "Called Strike",
+                                      "strike called",
+                                      "cs", "cso") ~ "Called Strike",
           TRUE ~ NA_character_
         )
       )
@@ -106,8 +111,8 @@ classify_pitches <- function(df) {
     mutate(
       z_top = if ("zone_top" %in% names(.)) coalesce(zone_top, ZONE_TOP_DEFAULT) else ZONE_TOP_DEFAULT,
       z_bot = if ("zone_bot" %in% names(.)) coalesce(zone_bot, ZONE_BOT_DEFAULT) else ZONE_BOT_DEFAULT,
-      in_zone = plate_x >= ZONE_LEFT & plate_x <= ZONE_RIGHT &
-                plate_z >= z_bot   & plate_z <= z_top,
+      in_zone = plate_x >= (ZONE_LEFT - BALL_RADIUS) & plate_x <= (ZONE_RIGHT + BALL_RADIUS) &
+                plate_z >= (z_bot - BALL_RADIUS)   & plate_z <= (z_top + BALL_RADIUS),
       classification = case_when(
         in_zone  & call_type == "Called Strike" ~ "Correct Strike",
         !in_zone & call_type == "Ball"          ~ "Correct Ball",
@@ -133,7 +138,7 @@ compute_summary <- function(df) {
     miss_dist_x <- pmin(abs(misses$plate_x - ZONE_LEFT), abs(misses$plate_x - ZONE_RIGHT))
     miss_dist_z <- pmin(abs(misses$plate_z - misses$z_top), abs(misses$plate_z - misses$z_bot))
     spread  <- sd(miss_dist_x) + sd(miss_dist_z)
-    consistency_score <- round(max(0, 100 - spread * 40), 1)
+    consistency_score <- round(max(0, 100 - spread * 3.3), 1)
   } else {
     consistency_score <- 100
   }
@@ -142,9 +147,9 @@ compute_summary <- function(df) {
   mid_z <- mean(c(ZONE_TOP_DEFAULT, ZONE_BOT_DEFAULT))
   zone_tendencies <- list(
     expanded_inside  = sum(false_pos & df$classification == "False Positive" &
-                            abs(df$plate_x) <= 1.2, na.rm = TRUE),
+                            abs(df$plate_x) <= 14.4, na.rm = TRUE),
     expanded_outside = sum(df$classification == "False Positive" &
-                            abs(df$plate_x) > 1.2, na.rm = TRUE),
+                            abs(df$plate_x) > 14.4, na.rm = TRUE),
     missed_high      = sum(df$classification == "False Negative" &
                             df$plate_z > mid_z, na.rm = TRUE),
     missed_low       = sum(df$classification == "False Negative" &

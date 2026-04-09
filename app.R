@@ -20,9 +20,16 @@ ui <- page_sidebar(
   title = "InZone Analytics",
   theme = bs_theme(
     version = 5,
-    bootswatch = "flatly",
-    primary = "#2c3e50"
+    bootswatch = "darkly"
   ),
+
+  # ---- Dark background for plot containers ----
+  tags$style(HTML("
+    .card-body { background-color: #222222 !important; }
+    .card { background-color: #222222 !important; border-color: #444444 !important; }
+    .nav-tabs .nav-link { color: #cccccc !important; }
+    .nav-tabs .nav-link.active { background-color: #222222 !important; color: white !important; border-color: #444444 !important; }
+  ")),
 
   # ---- Sidebar ----
   sidebar = sidebar(
@@ -102,9 +109,9 @@ server <- function(input, output, session) {
   })
 
   # ---- Plots ----
-  output$plot_overall <- renderPlot({ req(processed()); plot_overall(processed()$data) })
-  output$plot_fp      <- renderPlot({ req(processed()); plot_false_positives(processed()$data) })
-  output$plot_fn      <- renderPlot({ req(processed()); plot_false_negatives(processed()$data) })
+  output$plot_overall <- renderPlot({ req(processed()); plot_overall(processed()$data) }, bg = "#222222")
+  output$plot_fp      <- renderPlot({ req(processed()); plot_false_positives(processed()$data) }, bg = "#222222")
+  output$plot_fn      <- renderPlot({ req(processed()); plot_false_negatives(processed()$data) }, bg = "#222222")
 
   # ---- Summary Table ----
   output$summary_table <- renderTable({
