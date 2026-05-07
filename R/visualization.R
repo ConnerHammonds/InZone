@@ -79,7 +79,7 @@ zone_layers <- function(z_top = 42, z_bot = 18, base = 13) {
 plot_false_positives <- function(df, point_size = 3.5, base = 13) {
   fp <- df %>% filter(classification == "False Positive")
 
-  ggplot(fp, aes(x = plate_x, y = plate_z)) +
+  ggplot(fp, aes(x = -plate_x, y = plate_z)) +
     zone_layers(base = base) +
     geom_point(colour = "#e74c3c", size = point_size, alpha = 0.8) +
     labs(
@@ -92,7 +92,7 @@ plot_false_positives <- function(df, point_size = 3.5, base = 13) {
 plot_false_negatives <- function(df, point_size = 3.5, base = 13) {
   fn <- df %>% filter(classification == "False Negative")
 
-  ggplot(fn, aes(x = plate_x, y = plate_z)) +
+  ggplot(fn, aes(x = -plate_x, y = plate_z)) +
     zone_layers(base = base) +
     geom_point(colour = "#e67e22", size = point_size, alpha = 0.8) +
     labs(
@@ -103,7 +103,7 @@ plot_false_negatives <- function(df, point_size = 3.5, base = 13) {
 
 # ---- Plot 3: Overall Map ----
 plot_overall <- function(df, point_size = 3, base = 13) {
-  ggplot(df, aes(x = plate_x, y = plate_z, colour = classification)) +
+  ggplot(df, aes(x = -plate_x, y = plate_z, colour = classification)) +
     zone_layers(base = base) +
     geom_point(size = point_size, alpha = 0.75) +
     scale_colour_manual(values = CLASS_COLOURS, name = "Call Result") +

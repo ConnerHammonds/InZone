@@ -190,6 +190,9 @@ process_csv <- function(file_path) {
     standardize_columns(source) %>%
     standardize_pitch_calls(source) %>%
     filter_taken_pitches() %>%
+    mutate(
+      plate_x = -plate_x   # <-- REAL coordinate flip
+    ) %>%
     classify_pitches()
 
   list(data = df, source = source, n_raw = nrow(raw))
